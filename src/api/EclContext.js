@@ -20,6 +20,11 @@ function successSessionPermissions() {
     };
 }
 
+// Unique names for token storage,
+const STORAGE_TOKEN_NAME = 'clienttest_token';
+const STORAGE_LAST_ENDPOINT_URI = 'clienttest_last_endpoint_uri';
+const STORAGE_LAST_SUBPATH = 'clienttest_last_subpath';
+
 // If browser supports session storage (most do),
 const browser_session_storage_support = (window.sessionStorage !== undefined);
 
@@ -49,10 +54,10 @@ function EclContext() {
         if (browser_session_storage_support) {
 
             // Set session storage,
-            window.sessionStorage.setItem('last_endpoint_uri', endpoint_uri);
-            window.sessionStorage.setItem('last_subpath', subpath);
+            window.sessionStorage.setItem(STORAGE_LAST_ENDPOINT_URI, endpoint_uri);
+            window.sessionStorage.setItem(STORAGE_LAST_SUBPATH, subpath);
 
-            session_token = window.sessionStorage.getItem('ecltoken');
+            session_token = window.sessionStorage.getItem(STORAGE_TOKEN_NAME);
 
         }
         if (session_token !== null && session_token !== undefined) {
@@ -90,10 +95,10 @@ function EclContext() {
         // survives page reloads,
         if (browser_session_storage_support) {
             if (ecltoken === undefined) {
-                window.sessionStorage.removeItem('ecltoken');
+                window.sessionStorage.removeItem(STORAGE_TOKEN_NAME);
             }
             else {
-                window.sessionStorage.setItem('ecltoken', ecltoken);
+                window.sessionStorage.setItem(STORAGE_TOKEN_NAME, ecltoken);
             }
         }
     }
@@ -259,12 +264,8 @@ function EclContext() {
 
     async function init() {
         if (browser_session_storage_support) {
-            const last_endpoint_uri = window.sessionStorage.getItem('last_endpoint_uri');
-            const last_subpath = window.sessionStorage.getItem('last_subpath');
-
-            console.log({
-                last_endpoint_uri, last_subpath
-            });
+            const last_endpoint_uri = window.sessionStorage.getItem(STORAGE_LAST_ENDPOINT_URI);
+            const last_subpath = window.sessionStorage.getItem(STORAGE_LAST_SUBPATH);
 
             if (last_endpoint_uri !== undefined && last_subpath !== undefined) {
                 await loadSession(last_endpoint_uri, last_subpath);

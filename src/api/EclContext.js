@@ -220,23 +220,30 @@ function EclContext() {
         };
         const data = await jsonPost('/v1/payment/initpaycharge', params);
         return data;
-        // return {
-        //     status: 'OK',
-        //     transaction_id: 'testrid_' + new Date().getTime(),
-        //     payment_charge_details: {
-        //         provider: 'Test',
-        //         display: 'REGULAR_CC_FIELDS'
-        //     }
-        // };
-    }
-
-
-    async function makePayCharge() {
 
     }
 
 
-    async function completePayCharge() {
+    async function makePayCharge( currency, amount, method, cc_info,
+                                  save_in_card_store, complete_url ) {
+
+        const params = {
+            currency, amount, method, cc_info,
+            save_in_card_store, complete_url
+        };
+        const data = await jsonPost('/v1/payment/makepaycharge', params);
+        return data;
+
+    }
+
+
+    async function completePayCharge(transaction_id) {
+
+        const params = {
+            transaction_id
+        };
+        const data = await jsonPost('/v1/payment/completepaycharge', params);
+        return data;
 
     }
 
@@ -260,6 +267,9 @@ function EclContext() {
 
 
 
+    function isDefined(v) {
+        return (v !== undefined && v !== null);
+    }
 
 
     async function init() {
@@ -267,7 +277,7 @@ function EclContext() {
             const last_endpoint_uri = window.sessionStorage.getItem(STORAGE_LAST_ENDPOINT_URI);
             const last_subpath = window.sessionStorage.getItem(STORAGE_LAST_SUBPATH);
 
-            if (last_endpoint_uri !== undefined && last_subpath !== undefined) {
+            if ( isDefined(last_endpoint_uri) && isDefined(last_subpath) ) {
                 await loadSession(last_endpoint_uri, last_subpath);
             }
         }

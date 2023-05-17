@@ -5,6 +5,8 @@ import 'semantic-ui-css/semantic.min.css';
 import App from './ui/App';
 import reportWebVitals from './reportWebVitals';
 
+import { BrowserRouter } from 'react-router-dom';
+
 import EclContext from './api/EclContext';
 
 async function start() {
@@ -15,10 +17,12 @@ async function start() {
     const root = ReactDOM.createRoot(document.getElementById('root'));
     root.render(
       <React.StrictMode>
-        <App
-            ecl_context={ context }
-            logged_in_state={ context.getLoggedInState() }
-        />
+        <BrowserRouter>
+            <App
+                ecl_context={ context }
+                logged_in_state={ context.getLoggedInState() }
+            />
+        </BrowserRouter>
       </React.StrictMode>
     );
 

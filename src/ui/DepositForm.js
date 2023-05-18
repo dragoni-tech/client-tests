@@ -79,7 +79,7 @@ const DepositForm = (props) => {
                     active={ billing_open }
                     onClick={ handleBillingToggle }
                 >
-                    <Icon name='dropdown' />
+                    <Icon name="dropdown" />
                     Billing Details
                 </Accordion.Title>
                 <Accordion.Content active={billing_open}>

@@ -24,6 +24,7 @@ const DepositTest = (props) => {
 
     const [step, setStep] = useState('uninit');
     const [transaction_id, setTransactionId] = useState('');
+    const [payment_customer_details, setPaymentCustomerDetails] = useState({});
 
     const [operation_error, setOperationError] = useState({});
 
@@ -84,13 +85,18 @@ const DepositTest = (props) => {
             // Get the transaction_id and details of how to receive card
             // details from the user,
             const {
-                transaction_id, payment_charge_details
+                transaction_id,
+                payment_charge_details
             } = init_pay_charge_response;
+
+            // Customer details from the payment charge details,
+            const customer_details = payment_charge_details.customer_details;
 
             // If the deposit display is 'REGULAR_CC_FIELDS' then we accept
             // the pan/cvv directly from the user,
             if (payment_charge_details.display === 'REGULAR_CC_FIELDS') {
                 setTransactionId(transaction_id);
+                setPaymentCustomerDetails(customer_details);
                 setStep('init-regular-cc-fields');
             }
             // PENDING: Support for other types of card display settings,
@@ -124,6 +130,11 @@ const DepositTest = (props) => {
 
     const handleRegularCCFieldsDepositAction = async (details) => {
         const {
+
+            billing_firstname, billing_lastname,
+            billing_address1, billing_address2, billing_address3,
+            billing_city, billing_county, billing_postcode,
+
             currency, amount,
             payment_method, pan, expiry, cvv
         } = details;
@@ -201,6 +212,7 @@ const DepositTest = (props) => {
                 <Grid.Column style={{ maxWidth: 800 }}>
                     <DepositForm
                         onDepositAction = { handleRegularCCFieldsDepositAction }
+                        customer_details = { payment_customer_details }
                         disabled = { is_processing }
                     />
                 </Grid.Column>
@@ -216,9 +228,7 @@ const DepositTest = (props) => {
     // Components to render,
     return (
         <div>
-            <Header as="h4">
-                Deposit Test
-            </Header>
+
             <Message error hidden={error_msg === undefined}
                      header={error_title}
                      content={error_msg} />

@@ -52,7 +52,7 @@ const CompleteDeposit = (props) => {
     if (deposit_details !== '') {
         const ddetails_ob = JSON.parse(deposit_details);
 
-        const action = ddetails_ob.step_details.action;
+        const action = ddetails_ob.step;
         if (action === 'declined') {
             action_description = 'Card - DECLINED';
         }

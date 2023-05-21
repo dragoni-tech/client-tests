@@ -36,6 +36,7 @@ const DepositForm = (props) => {
     const [pan, setPan] = useState('');
     const [expiry, setExpiry] = useState('');
     const [cvv, setCvv] = useState('');
+    const [holder_name, setHolderName] = useState('');
 
     const [billing_open, setBillingOpen] = useState(false);
 
@@ -59,7 +60,7 @@ const DepositForm = (props) => {
             billing_address1, billing_address2, billing_address3,
             billing_city, billing_county, billing_postcode,
 
-            currency, amount, payment_method, pan, expiry, cvv
+            currency, amount, payment_method, pan, expiry, cvv, holder_name
 
         });
     };
@@ -199,6 +200,14 @@ const DepositForm = (props) => {
                     onChange={(e) => setCvv(e.target.value)}
                 />
             </Form.Group>
+            <Form.Field
+                disabled={disabled}
+                control={Input}
+                label="Name as appears on card"
+                placeholder="Card holders name"
+                value={holder_name}
+                onChange={(e) => setHolderName(e.target.value)}
+            />
             <Button type="submit" disabled={disabled} >Start Deposit</Button>
         </Form>
     );

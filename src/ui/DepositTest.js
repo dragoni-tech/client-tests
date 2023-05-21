@@ -72,7 +72,7 @@ const DepositTest = (props) => {
         const context = props.ecl_context;
 
         // The completion URI we redirect to once payment outcome is known,
-        const complete_url = 'http://localhost:3000/complete';
+        const complete_url = 'https://paymenttests.dragoneye.gg/pp/localhostredirect/complete?port=3000';
 
         // Endpoint: /payment/initpaycharge
         const init_pay_charge_response =
@@ -86,8 +86,14 @@ const DepositTest = (props) => {
             // details from the user,
             const {
                 transaction_id,
-                payment_charge_details
+                payment_charge_details,
+                stored_cards,         // All stored cards for this user,
+                permitted_currencies, // Array of permitted currency codes,
             } = init_pay_charge_response;
+
+            // Set the transaction_id from the response (this is an
+            // internal id used for this specific payment interaction)
+            setTransactionId(transaction_id);
 
             // Customer details from the payment charge details,
             const customer_details = payment_charge_details.customer_details;
@@ -95,9 +101,17 @@ const DepositTest = (props) => {
             // If the deposit display is 'REGULAR_CC_FIELDS' then we accept
             // the pan/cvv directly from the user,
             if (payment_charge_details.display === 'REGULAR_CC_FIELDS') {
-                setTransactionId(transaction_id);
+
+                // Set up UI with the customer details,
                 setPaymentCustomerDetails(customer_details);
+
+                // PENDING: Set up UI for the stored cards and restrict to
+                //   permitted currencies,
+
+
+
                 setStep('init-regular-cc-fields');
+
             }
             // PENDING: Support for other types of card display settings,
             else {
@@ -136,12 +150,13 @@ const DepositTest = (props) => {
             billing_city, billing_county, billing_postcode,
 
             currency, amount,
-            payment_method, pan, expiry, cvv
+            payment_method, pan, expiry, cvv, holder_name
         } = details;
 
         await setIsProcessing(true);
 
         console.log("handleRegularCCFieldsDepositAction");
+        console.log(details);
 
         // The context for processing this operation,
         const context = props.ecl_context;
@@ -150,14 +165,23 @@ const DepositTest = (props) => {
         const cc_info = {
             pan,
             expiration: expiry,
-            securitycode: cvv
+            securitycode: cvv,
+            holdername: holder_name
         };
         const save_in_card_store = false;
-        const complete_url = 'http://localhost:3000/complete';
+
+        // PaySafe doesn't allow redirects to 'localhost' so we use a REDIRECT
+        // middleware component for testing.
+        const complete_url = 'https://paymenttests.dragoneye.gg/pp/localhostredirect/complete?port=3000';
+
+        // NOTE: 'transaction_id' comes out of the 'initpaycharge' endpoint and
+        //   it represents an internal payment transaction unique for this
+        //   specific charge.
 
         // Endpoint: /payment/makepaycharge
         const make_pay_charge_response =
                 await context.makePayCharge(
+                        transaction_id,
                         currency, amount, payment_method, cc_info,
                         save_in_card_store, complete_url );
 

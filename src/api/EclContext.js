@@ -224,10 +224,12 @@ function EclContext() {
     }
 
 
-    async function makePayCharge( currency, amount, method, cc_info,
+    async function makePayCharge( transaction_id, currency, amount,
+                                  method, cc_info,
                                   save_in_card_store, complete_url ) {
 
         const params = {
+            transaction_id,
             currency, amount, method, cc_info,
             save_in_card_store, complete_url
         };

@@ -4,12 +4,10 @@ import { Button, Form, Segment, Input, Label } from 'semantic-ui-react';
 import Login from './Login.js';
 import AuthTests from './AuthTests.js';
 
-
-
 class Main extends Component {
 
     state = {
-        domain: 'paymenttests.dragoneye.gg',
+        domain: 'thetatests.dragoneye.gg',
         product_name: 'dragonidev2',
         logged_in_state: this.props.logged_in_state,
         controls_disabled: false,

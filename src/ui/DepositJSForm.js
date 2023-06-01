@@ -301,7 +301,6 @@ const DepositJSForm = (props) => {
                 value={holder_name}
                 onChange={(e) => setHolderName(e.target.value)}
             />
-            {/* <button id="payNow" type="button" class="ui button">Pay now</button> */}
         </div>
     );
 

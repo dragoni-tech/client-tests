@@ -4,8 +4,6 @@ import { Button, Form, Segment, Input, Label } from 'semantic-ui-react';
 import Login from './Login.js';
 import AuthTests from './AuthTests.js';
 
-
-
 class Main extends Component {
 
     state = {

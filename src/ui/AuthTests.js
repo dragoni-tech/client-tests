@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Header, Tab } from 'semantic-ui-react';
 
 import DepositTest from './DepositTest.js';
+import DepositJSTest2 from './DepositJSTest2.js';
 import WithdrawalTest from './WithdrawalTest.js';
 
 
@@ -9,9 +10,9 @@ const AuthTests = (props) => {
 
     const panes = [
         {
-            menuItem: 'Card Deposit',
+            menuItem: 'Card Deposit JS',
             render: () =>
-                <Tab.Pane><DepositTest ecl_context={ props.ecl_context } /></Tab.Pane>
+                <Tab.Pane><DepositJSTest2 ecl_context={ props.ecl_context } /></Tab.Pane>
 
         },
         {

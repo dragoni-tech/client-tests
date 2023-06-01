@@ -24,7 +24,9 @@ const DepositJSTest2 = (props) => {
 
     const [step, setStep] = useState('uninit');
     const [transaction_id, setTransactionId] = useState('');
+    const [paysafe_environment, setPaySafeEnvironment] = useState('');
     const [single_use_customer_token, setSingleUseCustomerToken] = useState('');
+    const [processor_transaction_id, setProcessorTransactionId] = useState('');
     const [payment_customer_details, setPaymentCustomerDetails] = useState({});
     const [customer_stored_cards, setCustomerStoredCards] = useState([]);
 
@@ -50,8 +52,13 @@ const DepositJSTest2 = (props) => {
             url_params.set(key, params[key]);
         }
 
+        let delim_char = '?';
+        if (redirect_url.indexOf('?') >= 0) {
+            delim_char = '&';
+        }
+
         // Hard browser redirect to the given redirect_url,
-        const target = redirect_url + '?' + url_params.toString();
+        const target = redirect_url + delim_char + url_params.toString();
         console.log("Browser redirect to: ", target);
 
         window.location.replace(target);
@@ -74,7 +81,7 @@ const DepositJSTest2 = (props) => {
         const context = props.ecl_context;
 
         // The completion URI we redirect to once payment outcome is known,
-        const complete_url = 'https://thetatests.dragoneye.gg/pp/localhostredirect/complete?port=3000';
+        const complete_url = 'https://dragonidev2.dragoneye.gg/pp/localhostredirect/complete?port=3000';
 
         // Endpoint: /payment/initpaycharge
         const init_pay_charge_response =
@@ -87,38 +94,49 @@ const DepositJSTest2 = (props) => {
             const {
                 transaction_id,
                 payment_charge_details,
-                permitted_currencies, // Array of permitted currency codes,
             } = init_pay_charge_response;
-
-            const single_use_customer_token = payment_charge_details.single_use_customer_token;
 
             // Set the transaction_id from the response (this is an
             // internal id used for this specific payment interaction)
             setTransactionId(transaction_id);
 
+            // Array of permitted currencies,
+            const permitted_currencies = payment_charge_details.permitted_currencies;
+
+            // The PaySafe.JS environment (eg. Web API key),
+            setPaySafeEnvironment({
+                currencyCode: permitted_currencies[0],
+                environment: payment_charge_details.environment,
+                web_api_key: payment_charge_details.paysafe_api_key,
+                merchantDescriptor: payment_charge_details.merchantDescriptor
+            });
+
             // Single use customer token
-            setSingleUseCustomerToken(single_use_customer_token);
-            
+            setSingleUseCustomerToken(payment_charge_details.single_use_customer_token);
+
+            // Set the processor transaction id (the merchant number) we must
+            // use for this payment transaction,
+            setProcessorTransactionId(payment_charge_details.processor_transaction_id);
 
             // Customer details from the payment charge details,
             const customer_details = payment_charge_details.customer_details;
 
             // All stored cards in paysafe for this user,
-            const stored_cards_js = payment_charge_details.stored_cards_js;
+            const stored_cards = payment_charge_details.stored_cards;
 
 
-            // If the deposit display is 'REGULAR_CC_FIELDS' then we accept
-            // the pan/cvv directly from the user,
-            if (payment_charge_details.display === 'REGULAR_CC_FIELDS') {
+            // If the deposit display is 'PAYSAFE_JS_LIBRARY' then we accept
+            // the pan/cvv through the PaySafe.JS library which is tokenized,
+            if (payment_charge_details.display === 'PAYSAFE_JS_LIBRARY') {
 
                 // Set up UI with the customer details,
                 setPaymentCustomerDetails(customer_details);
 
                 // Set up UI for the stored cards,
-                setCustomerStoredCards(stored_cards_js);
+                setCustomerStoredCards(stored_cards);
 
-                // Set step to display regular CC fields (server 2 server);
-                setStep('init-regular-cc-fields');
+                // Set step to display PaySafe.JS payment fields;
+                setStep('init-paysafe-js-library');
 
             }
             // PENDING: Support for other types of card display settings,
@@ -145,17 +163,17 @@ const DepositJSTest2 = (props) => {
 
     /**
      * The deposit action that happens when 'display' type is
-     * 'REGULAR_CC_FIELDS'
+     * 'PAYSAFE_JS_LIBRARY'
      *
      * @param {*} details
      */
 
-    const handleRegularCCFieldsDepositAction = async (details) => {
+    const handlePaySafeJSLibraryDepositAction = async (details) => {
 
         const {
 
-            currency, amount,
-            selected_card_id, payment_method, pan, expiry, cvv, holder_name
+            payment_method, currency, amount,
+            selected_card_id, paysafe_card_tokenization
 
         } = details;
 
@@ -170,26 +188,21 @@ const DepositJSTest2 = (props) => {
         // If we are using a selected card number,
         if (selected_card_id !== undefined && selected_card_id !== '') {
             cc_info.storedcreditcardid = selected_card_id;
-            cc_info.securitycode = cvv;
-            cc_info.token = details.token;
+            cc_info.token = paysafe_card_tokenization;
         }
         else {
-            cc_info.pan = pan;
-            cc_info.expiration = expiry;
-            cc_info.securitycode = cvv;
-            cc_info.holdername = holder_name;
-            cc_info.token = details.token;
+            cc_info.token = paysafe_card_tokenization;
         }
 
         const save_in_card_store = true;
 
-        // // PaySafe doesn't allow redirects to 'localhost' so we use a REDIRECT
-        // // middleware component for testing.
-        const complete_url = '';
+        // NOTE: 'transaction_id' comes out of the 'initpaycharge' endpoint and
+        //   it represents an internal payment transaction unique for this
+        //   specific charge.
 
-        // // NOTE: 'transaction_id' comes out of the 'initpaycharge' endpoint and
-        // //   it represents an internal payment transaction unique for this
-        // //   specific charge.
+        // NOTE: 'complete_url' is not necessary to be set when using the
+        //   PaySafe.JS library,
+        const complete_url = '';
 
         // Endpoint: /payment/makepaycharge
         const make_pay_charge_response =
@@ -198,18 +211,32 @@ const DepositJSTest2 = (props) => {
                         currency, amount, payment_method, cc_info,
                         save_in_card_store, complete_url );
 
-        console.log('make_pay_charge_response', make_pay_charge_response);
+        // The 'status' value will always be 'REDIRECT' if everything worked
+        // as expected. There's currently three possible redirections;
+        //   'declined': Card was declined. Redirect to complete_url.
+        //   'approved': Card was approved. Redirect to complete_url.
+        //   'threed': A 3DS challenge is neceesary. Open an iframe and redirect.
+        if (make_pay_charge_response.status === 'REDIRECT') {
 
-        const redirect_details = {
-            params: {
-                transaction_id: transaction_id,
-                json_result: JSON.stringify(make_pay_charge_response),
-            },
-            redirect_url: 'http://localhost:3000/completeJS',
-        };
-        
-        // Redirect with the given details,
-        redirectToPage(redirect_details);
+            console.log(make_pay_charge_response);
+
+            // The response from platform,
+            const {
+                step,
+                step_details,
+                redirect_details,
+            } = make_pay_charge_response;
+
+            // Redirect with the given details,
+            redirectToPage(redirect_details);
+
+        }
+        else {
+            setOperationError({
+                title: 'Error',
+                msg: JSON.stringify(make_pay_charge_response, null, 1)
+            });
+        }
 
         await setIsProcessing(false);
 
@@ -227,15 +254,17 @@ const DepositJSTest2 = (props) => {
     }
 
     // Once initialised, present UI for entering card details,
-    else if (step === 'init-regular-cc-fields') {
+    else if (step === 'init-paysafe-js-library') {
         content = (
             <Grid>
                 <Grid.Column style={{ maxWidth: 800 }}>
                     <DepositJSForm
-                        onDepositAction = { handleRegularCCFieldsDepositAction }
+                        onDepositAction = { handlePaySafeJSLibraryDepositAction }
                         customer_details = { payment_customer_details }
                         customer_stored_cards = { customer_stored_cards }
+                        processor_transaction_id = { processor_transaction_id }
                         single_use_customer_token = { single_use_customer_token }
+                        paysafe_environment = { paysafe_environment }
                         disabled = { is_processing }
                     />
                 </Grid.Column>

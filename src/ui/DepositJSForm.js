@@ -1,7 +1,48 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Header, Icon, Button, Form, Input, Select, List, Segment, Accordion, Divider } from 'semantic-ui-react';
-import { getApiKey, getOptions } from '../utils/PaysafeSettings.js';
 
+import './DepositJSForm.css';
+
+
+// Definitions of the PaySafe fields as used by the PaySafe.JS library,
+let PAYSAFE_FIELD_OPTIONS = {
+    fields: {
+        cardNumber: {
+            selector: '#cardNumber',
+//            placeholder: 'Card number',
+            separator: ' ',
+            optional: true,
+        },
+        expiryDate: {
+            selector: '#expiryDate',
+//            placeholder: 'Expiry date',
+            optional: true,
+        },
+        cvv: {
+            selector: '#cvv',
+//            placeholder: 'CVV',
+            optional: false,
+        },
+    },
+    style: {
+       input: {
+            "font-family": "robotoregular,Helvetica,Arial,sans-serif",
+            "font-weight": "normal",
+            "font-size": "14px",
+        },
+        "#card-number.valid": {
+            "color": "black"
+        },
+        ":focus": {
+            "color": "black"
+        }
+    }
+};
+
+
+
+// If a value (idv) in props.customer_details is not defined then return empty
+// string.
 function custDetails(props, idv) {
     if (props.customer_details !== undefined) {
         const v = props.customer_details[idv];
@@ -12,9 +53,66 @@ function custDetails(props, idv) {
     return '';
 }
 
-let paysafeInstance = null;
-let API_KEY = getApiKey();
-let OPTIONS = getOptions();
+
+// NOTE: Sadly we have to employ a global here because we don't want PaySafe
+//   to be initialised twice for this component.
+let initialisingPaySafe;
+let paysafeInstance;
+
+// PaySafe initialisation. Make sure this is not called multiple times at the
+// same time.
+
+async function initialisePaySafe(paysafe_environment) {
+    if (initialisingPaySafe !== undefined) {
+        await initialisingPaySafe;
+        return;
+    }
+    try {
+
+        // Remove all IFrames on the elements if we need
+        // to initialise the component again.
+        document.getElementById('cardNumber').replaceChildren();
+        document.getElementById('expiryDate').replaceChildren();
+        document.getElementById('cvv').replaceChildren();
+
+        // Use the PaySafe library to decorate the payment handling fields,
+        const options = { ...PAYSAFE_FIELD_OPTIONS };
+
+        const {
+            currencyCode,
+            environment,
+            web_api_key
+        } = paysafe_environment;
+
+        // Set the currency and environment,
+        options.currencyCode = currencyCode;
+        // select the Paysafe test / sandbox environment
+        options.environment = environment;
+
+        const instance = await window.paysafe.fields.setup(web_api_key, options);
+        console.log('Setup instance completed. in  new form');
+        paysafeInstance = instance;
+
+        const paymentMethods = await instance.show();
+
+        if (paymentMethods.card && !paymentMethods.card.error) {
+            console.log('3dS');
+        }
+
+    }
+    catch (err) {
+        // NOTE: We should callback to some sort of error handling here because
+        //   this will fail if the PaySafe service is not running or there are
+        //   other networking issues blocking access to the servers.
+        console.error(err);
+    }
+    finally {
+        initialisingPaySafe = undefined;
+    }
+
+}
+
+// The component,
 
 const DepositJSForm = (props) => {
 
@@ -35,16 +133,12 @@ const DepositJSForm = (props) => {
     const [ billing_postcode, setBillingPostcode ] =
                     useState(custDetails(props, "billing_postcode"));
 
-    const [currency, setCurrency] = useState('GBP');
+    const [currency, setCurrency] = useState( props.paysafe_environment.currencyCode );
     const [amount, setAmount] = useState('');
     const [payment_method, setPaymentMethod] = useState('VISA');
-    const [pan, setPan] = useState('');
-    const [expiry, setExpiry] = useState('');
-    const [cvv, setCvv] = useState('');
     const [holder_name, setHolderName] = useState('');
 
     const [selected_card_id, setSelectedCardId] = useState('');
-    const [selected_card_token, setSelectedCardToken] = useState('');
 
     const [billing_open, setBillingOpen] = useState(false);
 
@@ -60,151 +154,112 @@ const DepositJSForm = (props) => {
         { key: 'usd', text: 'USD', value: 'USD' },
     ];
 
-    const [initialized, setInitialized] = useState(false);
-    const [token, setToken] = useState('');
-    const [storedCard, setStoredCard] = useState(true);
-
-    let initializedJsForm = false;
 
     useEffect(() => {
 
-        if (!initializedJsForm) {
+        // NOTE: Global variable here because initialisePaySafe has a lot of
+        //   side-effects and we can't easily mount/unmount the PaySafe
+        //   components in React.
+        if (initialisingPaySafe === undefined) {
+            initialisingPaySafe = initialisePaySafe(props.paysafe_environment);
+        }
 
-            window.paysafe.fields.setup(API_KEY, OPTIONS).then((instance) => {
+    }, [ props.paysafe_environment ]);
 
-                console.log('Setup instance completed. in  new form');
-                paysafeInstance = instance;
-                return instance.show();
 
-            }).then((paymentMethods) => {
-                
-                if (paymentMethods.card && !paymentMethods.card.error) {
+    const handleSubmit = async () => {
 
-                    console.log('3dS');
-
+        let selected_card_token;
+        if (selected_card_id !== '') {
+            for (const card of props.customer_stored_cards) {
+                if (card.cc_cardstore_id === selected_card_id) {
+                    selected_card_token = card.payment_handle_token;
                 }
-            }).catch((error) => {
-                // display any setup errors
-                console.log(JSON.stringify(error));
-            });
+            }
         }
-        initializedJsForm = true;
-    }, []);
-    
 
-    const handleSubmit = () => {
+        // Note; This should be parsed depending on the currency. Some
+        //   currencies don't have factional parts. PaySafe wants the
+        //   amount in minor units.
+        const amount_as_number = Math.round( parseFloat( amount ) * 100 );
 
-        let tokenizationOptions = {};
+        const tokenizationOptions = {
+            amount: amount_as_number,
+            transactionType: 'PAYMENT',
+            paymentType: 'CARD',
+            merchantRefNum: props.processor_transaction_id,
+            customerDetails: {
+                holderName: holder_name,
+                billingDetails: {
+                    country: 'GB',
+                    zip: billing_postcode,
+                    street: billing_address1,
+                    street2: billing_address2,
+                    city: billing_city,
+                    state: billing_county,
+                },
+            },
+            merchantDescriptor: props.paysafe_environment.merchantDescriptor,
+            threeDs: {
+                "merchantUrl": "https://www.paysafe.com",
+                "deviceChannel": "BROWSER",
+                "messageCategory": "PAYMENT",
+                "transactionIntent": "GOODS_OR_SERVICE_PURCHASE",
+                "authenticationPurpose": "PAYMENT_TRANSACTION"
+            },
+            openAs: 'IFRAME',
+        };
 
-        if (selected_card_token !== '') {
-            tokenizationOptions = {
-                amount: parseInt(amount, 10) * 100, // Is necesary parse the amount value with a valid finance code
-                threeDs: {
-                    "merchantUrl": "https://www.paysafe.com",
-                    "deviceChannel": "BROWSER",
-                    "messageCategory": "PAYMENT",
-                    "transactionIntent": "GOODS_OR_SERVICE_PURCHASE",
-                    "authenticationPurpose": "PAYMENT_TRANSACTION"
-                },
-                transactionType: 'PAYMENT',
-                paymentType: 'CARD',
-                merchantRefNum: 'merchant-ref-num-' + new Date().getTime(),
-                customerDetails: {
-                    billingDetails: {
-                        country: 'GB',
-                        zip: billing_postcode,
-                        street: billing_address1,
-                        city: billing_city,
-                        state: billing_county,
-                    },
-                },
-                singleUseCustomerToken: props.single_use_customer_token,
-                paymentTokenFrom: selected_card_token,
-            };
-        }
-        else {
-            tokenizationOptions = {
-                amount: parseInt(amount, 10) * 100, // Is necesary parse the amount value with a valid finance code
-                currencyCode: currency,
-                threeDs: {
-                    "merchantUrl": "https://www.paysafe.com",
-                    "deviceChannel": "BROWSER",
-                    "messageCategory": "PAYMENT",
-                    "transactionIntent": "GOODS_OR_SERVICE_PURCHASE",
-                    "authenticationPurpose": "PAYMENT_TRANSACTION"
-                },
-                transactionType: 'PAYMENT',
-                paymentType: 'CARD',
-                merchantRefNum: 'merchant-ref-num-' + new Date().getTime(),
-                customerDetails: {
-                    holderName: holder_name,
-                    billingDetails: {
-                        country: 'GB',
-                        zip: billing_postcode,
-                        street: billing_address1,
-                        city: billing_city,
-                        state: billing_county,
-                    },
-                },
-            };
+        // If using a stored card,
+        if (selected_card_id !== '') {
+            tokenizationOptions.singleUseCustomerToken = props.single_use_customer_token;
+            tokenizationOptions.paymentTokenFrom = selected_card_token;
         }
 
         console.log(tokenizationOptions);
 
-        paysafeInstance.tokenize(tokenizationOptions).then((result) => {
-            // write the Payment token value to the browser console
-            setToken(result.token);
-            handlePay(result.token);
-        }).catch((error) => {
-        // display the tokenization error in dialog window
-            console.log(JSON.stringify(error));
-        });
-        
-    };
+        try {
 
-    const handlePay = async (token) => {
-        
-        console.log(token);
-        console.log("handlePay");
-        
-        const details = {
+            // Tokenize the payment details,
+            const result = await paysafeInstance.tokenize(tokenizationOptions);
 
-            billing_firstname: '',
-            billing_lastname: '',
-            billing_address1: '',
-            billing_address2: '',
-            billing_address3: '',
-            billing_city: '',
-            billing_county: '',
-            billing_postcode: '',
-            currency: 'GBP',
-            amount: amount,
-            selected_card_id: '',
-            payment_method: 'VISA',
-            pan: '',
-            expiry: '',
-            cvv: '',
-            holder_name: '',
-            token: token,
-        };
+            // Looks like we succeeded in tokenization, so do a callback on the
+            // deposit action,
+            const paysafe_card_tokenization = result.token;
 
-        await props.onDepositAction(details);
+            // Perform the deposit action,
+            props.onDepositAction({
 
-        setInitialized(true);
+                billing_firstname, billing_lastname,
+                billing_address1, billing_address2, billing_address3,
+                billing_city, billing_county, billing_postcode,
+
+                currency, amount,
+                selected_card_id, payment_method, holder_name,
+
+                paysafe_card_tokenization,
+
+            });
+
+        }
+        catch (err) {
+
+            // NOTE: There's various errors that can happen with tokenization
+            //  such as 3DS failing and cards being declined, etc. This should
+            //  handle the errors sensibly.
+
+            console.error(err);
+        }
 
     };
 
-    const handleStoredCardSelection = (card_token) => {
+    const handleStoredCardSelection = (card_id) => {
         let to_set = '';
-        if (selected_card_token !== card_token) {
-            to_set = card_token;
+        if (selected_card_id !== card_id) {
+            to_set = card_id;
         }
         console.log(to_set);
-        setSelectedCardToken(to_set);
-
-        document.getElementById('cardNumber').style.visibility = 'hidden';
-        document.getElementById('expiryDate').style.visibility = 'hidden';
-
+        setSelectedCardId(to_set);
     };
 
 
@@ -220,43 +275,36 @@ const DepositJSForm = (props) => {
     // The UI to present for credit card entry (changes depending on if a card
     // is selected or not),
     let card_entry_content;
-    if (selected_card_id === '') {
-        card_entry_content = (
-            <div>
-                <div id="cardNumber"></div>
-                <div id="expiryDate"></div>
-                <div id="cvv"></div>
-                <Form.Field
-                    disabled={disabled}
-                    control={Input}
-                    label="Name as appears on card"
-                    placeholder="Card holders name"
-                    value={holder_name}
-                    onChange={(e) => setHolderName(e.target.value)}
-                />
-                {/* <button id="payNow" type="button" class="ui button">Pay now</button> */}
-            </div>
-        );
-    }
 
-    // Otherwise user has selected a card so only requires CVV to be passed,
-    else {
-        card_entry_content = (
-            <div>
-                <Form.Group widths="equal">
-                    <Form.Field
-                        disabled={disabled}
-                        control={Input}
-                        label="Confirm CVV"
-                        placeholder="CVV"
-                        value={cvv}
-                        onChange={(e) => setCvv(e.target.value)}
-                    />
-                </Form.Group>
-            </div>
-        );
-    }
-    
+    const disable_card_number_and_expiry = (selected_card_id !== '');
+
+    card_entry_content = (
+        <div>
+            <Form.Field disabled={ disable_card_number_and_expiry }>
+                <label>Card Number</label>
+                <div id="cardNumber" className="paySafeInputField" />
+            </Form.Field>
+            <Form.Field disabled={ disable_card_number_and_expiry }>
+                <label>Expiry</label>
+                <div id="expiryDate" className="paySafeInputField" />
+            </Form.Field>
+            <Form.Field disabled={ false }>
+                <label>CVV</label>
+                <div id="cvv" className="paySafeInputField" />
+            </Form.Field>
+
+            <Form.Field
+                disabled={disabled}
+                control={Input}
+                label="Name as appears on card"
+                placeholder="Card holders name"
+                value={holder_name}
+                onChange={(e) => setHolderName(e.target.value)}
+            />
+            {/* <button id="payNow" type="button" class="ui button">Pay now</button> */}
+        </div>
+    );
+
 
     return (
         <div>
@@ -341,7 +389,7 @@ const DepositJSForm = (props) => {
                         options={currencyOptions} // Add other currency options as needed
                         placeholder="Currency"
                         value={currency}
-                        onChange={(e, { value }) => setCurrency(value)}
+                        // onChange={(e, { value }) => setCurrency(value)}
                     />
                     <Form.Field width={9}
                         disabled={disabled}
@@ -360,7 +408,7 @@ const DepositJSForm = (props) => {
                         { customer_stored_cards.map((card) => (
                             <List.Item active={card.cc_cardstore_id === selected_card_id}
                                     key={card.cc_cardstore_id}
-                                    onClick={ () => handleStoredCardSelection( card.payment_handle_token ) }>
+                                    onClick={ () => handleStoredCardSelection( card.cc_cardstore_id ) }>
                                 <List.Content>{ card.card_holder_name }</List.Content>
                                 <List.Content>{ card.card_type }: { card.card_pan_label } Exp: { card.card_expiration }</List.Content>
                             </List.Item>
@@ -378,7 +426,7 @@ const DepositJSForm = (props) => {
                 </Form>
 
         </div>
-        
+
     );
 
 };

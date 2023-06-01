@@ -10,12 +10,6 @@ const AuthTests = (props) => {
 
     const panes = [
         {
-            menuItem: 'Card Deposit',
-            render: () =>
-                <Tab.Pane><DepositTest ecl_context={ props.ecl_context } /></Tab.Pane>
-
-        },
-        {
             menuItem: 'Card Deposit JS',
             render: () =>
                 <Tab.Pane><DepositJSTest2 ecl_context={ props.ecl_context } /></Tab.Pane>

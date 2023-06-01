@@ -49,8 +49,13 @@ const DepositTest = (props) => {
             url_params.set(key, params[key]);
         }
 
+        let delim_char = '?';
+        if (redirect_url.indexOf('?') >= 0) {
+            delim_char = '&';
+        }
+
         // Hard browser redirect to the given redirect_url,
-        const target = redirect_url + '?' + url_params.toString();
+        const target = redirect_url + delim_char + url_params.toString();
         console.log("Browser redirect to: ", target);
 
         window.location.replace(target);
@@ -73,7 +78,7 @@ const DepositTest = (props) => {
         const context = props.ecl_context;
 
         // The completion URI we redirect to once payment outcome is known,
-        const complete_url = 'https://thetatests.dragoneye.gg/pp/localhostredirect/complete?port=3000';
+        const complete_url = 'https://paymenttests.dragoneye.gg/pp/localhostredirect/complete?port=3000';
 
         // Endpoint: /payment/initpaycharge
         const init_pay_charge_response =
@@ -157,7 +162,7 @@ const DepositTest = (props) => {
         } = details;
 
         await setIsProcessing(true);
-        
+
         console.log("handleRegularCCFieldsDepositAction");
         console.log(details);
 
@@ -183,7 +188,7 @@ const DepositTest = (props) => {
 
         // PaySafe doesn't allow redirects to 'localhost' so we use a REDIRECT
         // middleware component for testing.
-        const complete_url = 'https://thetatests.dragoneye.gg/pp/localhostredirect/complete?port=3000';
+        const complete_url = 'https://paymenttests.dragoneye.gg/pp/localhostredirect/complete?port=3000';
 
         // NOTE: 'transaction_id' comes out of the 'initpaycharge' endpoint and
         //   it represents an internal payment transaction unique for this

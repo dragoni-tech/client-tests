@@ -201,7 +201,7 @@ const DepositJSForm = (props) => {
             },
             merchantDescriptor: props.paysafe_environment.merchantDescriptor,
             threeDs: {
-                "merchantUrl": "https://www.paysafe.com",
+                "merchantUrl": "https://dragoni.gg",
                 "deviceChannel": "BROWSER",
                 "messageCategory": "PAYMENT",
                 "transactionIntent": "GOODS_OR_SERVICE_PURCHASE",

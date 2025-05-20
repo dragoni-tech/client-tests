@@ -78,7 +78,7 @@ const DepositTest = (props) => {
         const context = props.ecl_context;
 
         // The completion URI we redirect to once payment outcome is known,
-        const complete_url = 'https://paymenttests.dragoneye.gg/pp/localhostredirect/complete?port=3000';
+        const complete_url = 'https://paymenttests.matchpoint.bet/pp/localhostredirect/complete?port=3000';
 
         // Endpoint: /payment/initpaycharge
         const init_pay_charge_response =
@@ -188,7 +188,7 @@ const DepositTest = (props) => {
 
         // PaySafe doesn't allow redirects to 'localhost' so we use a REDIRECT
         // middleware component for testing.
-        const complete_url = 'https://paymenttests.dragoneye.gg/pp/localhostredirect/complete?port=3000';
+        const complete_url = 'https://paymenttests.matchpoint.bet/pp/localhostredirect/complete?port=3000';
 
         // NOTE: 'transaction_id' comes out of the 'initpaycharge' endpoint and
         //   it represents an internal payment transaction unique for this

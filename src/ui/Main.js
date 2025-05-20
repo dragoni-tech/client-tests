@@ -7,7 +7,7 @@ import AuthTests from './AuthTests.js';
 class Main extends Component {
 
     state = {
-        domain: 'paymenttests.dragoneye.gg',
+        domain: 'paymenttests.matchpoint.bet',
         product_name: 'dragonidev2',
         logged_in_state: this.props.logged_in_state,
         controls_disabled: false,

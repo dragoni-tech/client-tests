@@ -108,6 +108,7 @@ const DepositJSTest2 = (props) => {
                 currencyCode: permitted_currencies[0],
                 environment: payment_charge_details.environment,
                 web_api_key: payment_charge_details.paysafe_api_key,
+                paysafe_accountid: payment_charge_details.paysafe_accountid,
                 merchantDescriptor: payment_charge_details.merchantDescriptor
             });
 

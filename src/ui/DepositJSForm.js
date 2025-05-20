@@ -89,6 +89,9 @@ async function initialisePaySafe(paysafe_environment) {
         // select the Paysafe test / sandbox environment
         options.environment = environment;
 
+        console.log(JSON.stringify(web_api_key, null, 2));
+        console.log(JSON.stringify(options, null, 2));
+
         const instance = await window.paysafe.fields.setup(web_api_key, options);
         console.log('Setup instance completed. in  new form');
         paysafeInstance = instance;
@@ -188,6 +191,7 @@ const DepositJSForm = (props) => {
             transactionType: 'PAYMENT',
             paymentType: 'CARD',
             merchantRefNum: props.processor_transaction_id,
+            accountId: parseInt( props.paysafe_environment.paysafe_accountid, 10 ),
             customerDetails: {
                 holderName: holder_name,
                 billingDetails: {
@@ -201,7 +205,7 @@ const DepositJSForm = (props) => {
             },
             merchantDescriptor: props.paysafe_environment.merchantDescriptor,
             threeDs: {
-                "merchantUrl": "https://www.paysafe.com",
+                "merchantUrl": "http://dragoni.gg",
                 "deviceChannel": "BROWSER",
                 "messageCategory": "PAYMENT",
                 "transactionIntent": "GOODS_OR_SERVICE_PURCHASE",
@@ -216,7 +220,9 @@ const DepositJSForm = (props) => {
             tokenizationOptions.paymentTokenFrom = selected_card_token;
         }
 
-        console.log(tokenizationOptions);
+        console.log("PaySafe JS tokenization:");
+        const tokenizationOption_copy = JSON.parse( JSON.stringify(tokenizationOptions) );
+        console.log(JSON.stringify(tokenizationOption_copy, null, 2));
 
         try {
 
@@ -248,7 +254,9 @@ const DepositJSForm = (props) => {
             //  such as 3DS failing and cards being declined, etc. This should
             //  handle the errors sensibly.
 
+            console.error("Error reporting in PaySafe JS tokenization.");
             console.error(err);
+            console.log(JSON.stringify(err, null, 2));
         }
 
     };
@@ -301,7 +309,6 @@ const DepositJSForm = (props) => {
                 value={holder_name}
                 onChange={(e) => setHolderName(e.target.value)}
             />
-            {/* <button id="payNow" type="button" class="ui button">Pay now</button> */}
         </div>
     );
 

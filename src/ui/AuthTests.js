@@ -5,6 +5,8 @@ import DepositTest from './DepositTest.js';
 import DepositJSTest2 from './DepositJSTest2.js';
 import WithdrawalTest from './WithdrawalTest.js';
 
+import PromotionsTest from './PromotionsTest.js';
+
 
 const AuthTests = (props) => {
 
@@ -21,6 +23,13 @@ const AuthTests = (props) => {
                 <Tab.Pane><WithdrawalTest ecl_context={ props.ecl_context } /></Tab.Pane>
         },
         // add more tabs as needed
+
+        {
+            menuItem: 'Promotions Test',
+            render: () =>
+                <Tab.Pane><PromotionsTest ecl_context={ props.ecl_context } /></Tab.Pane>
+        }
+
     ];
 
     return (

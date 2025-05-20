@@ -250,6 +250,49 @@ function EclContext() {
     }
 
 
+    async function fetchAllCodes() {
+
+        const params = {
+        };
+
+        const data = await jsonPost('/v1/account/promotions/fetchallcodes', params);
+        return data;
+
+    }
+
+    async function fetchAllClaimedCodes() {
+
+        const params = {
+        };
+
+        const data = await jsonPost('/v1/account/promotions/fetchallclaimedcodes', params);
+        return data;
+
+    }
+
+    async function claimCode(campaign_group, code) {
+
+        const params = {
+            campaign_group,
+            code
+        };
+
+        const data = await jsonPost('/v1/account/promotions/claimcode', params);
+        return data;
+
+    }
+
+    async function fetchCodeStats() {
+
+        const params = {
+        };
+
+        const data = await jsonPost('/v1/account/promotions/fetchcodestats', params);
+        return data;
+
+    }
+
+
 
     async function logout() {
         const data = await jsonPost('/v1/account/logout', {});
@@ -300,11 +343,16 @@ function EclContext() {
         authenticate,
         authenticateByEmail,
 
+        logout,
+
         initPayCharge,
         makePayCharge,
         completePayCharge,
 
-        logout
+        fetchAllCodes,
+        fetchAllClaimedCodes,
+        fetchCodeStats,
+        claimCode,
 
     };
 
